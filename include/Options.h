@@ -19,6 +19,12 @@ public:
 	boxConstraints initializationBoxConstraints;
 	boxConstraints boxConstraints;
 
+	enum taskType {
+		TASK_1,
+		TASK_2
+	};
+	taskType task;
+
 	void setBlockSizeInitialization(const int blockSize);
 	int getBlockSizeInitialization();
 	int getGridSizeInitialization();

@@ -25,6 +25,8 @@ Options::Options(int argc, char* argv[])
 	initializationBoxConstraints = { -40, 40 };
 	boxConstraints = { -40, 40 };
 
+	task = taskType::TASK_1;
+
 	cudaMemcpyToSymbol(&d_particlesNumber, &particlesNumber, sizeof(int));
 	cudaMemcpyToSymbol(&d_dimensions, &dimesions, sizeof(int));
 

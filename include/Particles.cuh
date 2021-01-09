@@ -20,5 +20,6 @@ protected:
 
 	Options* options;
 	float* d_coordinates;
+	float* d_cost;
 	curandState* d_prngStates;
 };

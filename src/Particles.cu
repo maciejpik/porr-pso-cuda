@@ -19,6 +19,7 @@ Particles::Particles(Options* options) : options(options)
 
 	cudaMalloc(&d_coordinates, particlesNumber * dimensions * sizeof(float));
 	cudaMalloc(&d_prngStates, particlesNumber * dimensions * sizeof(curandState));
+	cudaMalloc(&d_cost, particlesNumber * sizeof(float));
 
 	_Particles_Initialize_createPrng << <options->getGridSizeInitialization(), options->getBlockSizeInitialization() >> >
 		((int)time(NULL), d_prngStates);
