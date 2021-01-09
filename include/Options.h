@@ -11,7 +11,7 @@ struct boxConstraints
 class Options
 {
 public:
-	Options();
+	Options::Options(int argc, char* argv[]);
 	virtual ~Options() = default;
 
 	int particlesNumber;

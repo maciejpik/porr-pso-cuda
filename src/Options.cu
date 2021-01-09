@@ -2,15 +2,25 @@
 
 #include <cuda_runtime.h>
 
+#include <stdio.h>
+
 extern __constant__ int d_particlesNumber;
 extern __constant__ int d_dimensions;
 extern __constant__ boxConstraints d_initializationBoxConstraints;
 extern __constant__ boxConstraints d_boxConstraints;
 
-Options::Options()
+Options::Options(int argc, char* argv[])
 {
-	particlesNumber = 10;
-	dimesions = 3;
+	if (argc == 3)
+	{
+		sscanf(argv[1], "%d", &particlesNumber);
+		sscanf(argv[2], "%d", &dimesions);
+	}
+	else
+	{
+		particlesNumber = 10;
+		dimesions = 3;
+	}
 
 	initializationBoxConstraints = { -40, 40 };
 	boxConstraints = { -40, 40 };

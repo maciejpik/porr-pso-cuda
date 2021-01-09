@@ -6,13 +6,11 @@
     <CudaCompile Include="src\PsoParticles.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\InputParser.h" />
     <ClInclude Include="include\Options.h" />
     <ClInclude Include="include\Particles.cuh" />
     <ClInclude Include="include\PsoParticles.cuh" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\InputParser.cpp" />
     <ClCompile Include="src\Options.cu" />
   </ItemGroup>
 </Project>

@@ -45,6 +45,10 @@
     <OutDir>$(SolutionDir)\build\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>\bulid\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)\build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>build\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -79,6 +83,8 @@
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
+      <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
+      <CodeGeneration>compute_75,sm_75</CodeGeneration>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -87,13 +93,11 @@
     <CudaCompile Include="src\PsoParticles.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\InputParser.h" />
     <ClInclude Include="include\Options.h" />
     <ClInclude Include="include\Particles.cuh" />
     <ClInclude Include="include\PsoParticles.cuh" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\InputParser.cpp" />
     <ClCompile Include="src\Options.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

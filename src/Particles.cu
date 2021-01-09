@@ -18,8 +18,8 @@ Particles::Particles(Options* options) : options(options)
 	dimensions = options->dimesions;
 
 	cudaMalloc(&d_coordinates, particlesNumber * dimensions * sizeof(float));
-	cudaMalloc(&d_prngStates, particlesNumber * dimensions * sizeof(float));
-
+	cudaMalloc(&d_prngStates, particlesNumber * dimensions * sizeof(curandState));
+	printf("%d\n", options->getGridSizeInitialization());
 	_Particles_Initialize_createPrng << <options->getGridSizeInitialization(), options->getBlockSizeInitialization() >> >
 		((int)time(NULL), d_prngStates);
 }
@@ -43,9 +43,9 @@ void Particles::print()
 		for (int coordinate = 0; coordinate < dimensions; coordinate++)
 		{
 			if (coordinate != dimensions - 1)
-				printf("%2.2f, ", coordinates[firstCoord + coordinate]);
+				printf("% .2f,\t", coordinates[firstCoord + coordinate]);
 			else
-				printf("%2.2f)\n", coordinates[firstCoord + coordinate]);
+				printf("% .2f)\n", coordinates[firstCoord + coordinate]);
 		}
 	}
 	delete coordinates;

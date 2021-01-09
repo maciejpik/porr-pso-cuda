@@ -1,5 +1,4 @@
 ﻿#include "include/Options.h"
-#include "include/InputParser.h"
 #include "include/PsoParticles.cuh"
 
 #include <cuda_runtime.h>
@@ -14,8 +13,7 @@ __constant__ boxConstraints d_boxConstraints;
 
 int main(int argc, char* argv[])
 {
-	Options* options = new Options();
-	InputParser::parse(options, argc, argv);
+	Options* options = new Options(argc, argv);
 
 	PsoParticles particles(options);
 	particles.print();
