@@ -6,6 +6,9 @@
 
 __global__ void _Particles_Initialize_createPrng(int seed, curandState* d_prngStates);
 
+__global__ void _Particles_computeCost_Task1(float* d_coordinates, float* d_cost);
+__global__ void _Particles_computeCost_Task2(float* d_coordinates, float* d_cost);
+
 class Particles
 {
 public:
@@ -13,6 +16,7 @@ public:
 	virtual ~Particles();
 	
 	void print();
+	void computeCost();
 
 protected:
 	int particlesNumber;
