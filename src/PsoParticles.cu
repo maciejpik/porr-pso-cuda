@@ -15,19 +15,32 @@ extern __constant__ boxConstraints d_boxConstraints;
 __global__ void _PsoParticles_Initialize_createParticles(float* d_coordinates, float* d_velocities,
 	curandState* d_prngStates)
 {
-	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
-	curandState prngLocalState = d_prngStates[particleId];
+	//int particleId = threadIdx.x + blockIdx.x * blockDim.x;
+	//curandState prngLocalState = d_prngStates[particleId];
 
-	for (int particleCoord = 0; particleCoord < d_dimensions; particleCoord++)
+	//for (int particleCoord = 0; particleCoord < d_dimensions; particleCoord++)
+	//{
+	//	d_coordinates[particleId * d_dimensions + particleCoord] = d_initializationBoxConstraints.min +
+	//		(d_initializationBoxConstraints.max - d_initializationBoxConstraints.min) * curand_uniform(&prngLocalState);
+	//	d_velocities[particleId * d_dimensions + particleCoord] = (d_initializationBoxConstraints.min +
+	//		(d_initializationBoxConstraints.max - d_initializationBoxConstraints.min) * curand_uniform(&prngLocalState))
+	//		/ (d_initializationBoxConstraints.max - d_initializationBoxConstraints.min);
+	//}
+
+	//d_prngStates[particleId] = prngLocalState;
+	int creatorId = threadIdx.x + blockIdx.x * blockDim.x;
+	curandState prngLocalState = d_prngStates[creatorId];
+
+	for (int offset = 0; offset < d_particlesNumber * d_dimensions; offset += d_particlesNumber)
 	{
-		d_coordinates[particleId * d_dimensions + particleCoord] = d_initializationBoxConstraints.min +
+		d_coordinates[offset + creatorId] = d_initializationBoxConstraints.min +
 			(d_initializationBoxConstraints.max - d_initializationBoxConstraints.min) * curand_uniform(&prngLocalState);
-		d_velocities[particleId * d_dimensions + particleCoord] = (d_initializationBoxConstraints.min +
+		d_velocities[offset + creatorId] = (d_initializationBoxConstraints.min +
 			(d_initializationBoxConstraints.max - d_initializationBoxConstraints.min) * curand_uniform(&prngLocalState))
 			/ (d_initializationBoxConstraints.max - d_initializationBoxConstraints.min);
 	}
 
-	d_prngStates[particleId] = prngLocalState;
+	d_prngStates[creatorId] = prngLocalState;
 }
 
 PsoParticles::PsoParticles(Options* options) : Particles(options)
