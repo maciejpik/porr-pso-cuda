@@ -14,6 +14,13 @@ public:
 	PsoParticles(Options* options);
 	virtual ~PsoParticles() = default;
 
+	void updateGBest();
+
 protected:
 	float* d_velocities;
+	float* d_gBestCoordinates;
+	float* d_gBestCost;
+
+	float* gBestCoordinates;
+	float* gBestCost;
 };
