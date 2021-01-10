@@ -32,11 +32,26 @@ __global__ void _PsoParticles_Initialize_createParticles(float* d_coordinates, f
 	d_prngStates[creatorId] = prngLocalState;
 }
 
+__global__ void _PsoParticles_updateLBest(float* d_coordinates, float* d_cost, float* d_lBestCoordinates,
+	float* d_lBestCost)
+{
+	int particleId = blockIdx.x;
+	int dimension = threadIdx.x;
+
+	if (d_lBestCost[particleId] < d_cost[particleId])
+	{
+		d_lBestCost[particleId] < d_cost[particleId];
+		d_lBestCoordinates[particleId * d_dimensions + dimension] = d_coordinates[particleId * d_dimensions + dimension];
+	}
+}
+
 PsoParticles::PsoParticles(Options* options) : Particles(options)
 {
 	cudaMalloc(&d_velocities, particlesNumber * dimensions * sizeof(float));
 	cudaMalloc(&d_gBestCoordinates, dimensions * sizeof(float));
 	cudaMalloc(&d_gBestCost, sizeof(float));
+	cudaMalloc(&d_lBestCoordinates, particlesNumber * dimensions * sizeof(float));
+	cudaMalloc(&d_lBestCost, particlesNumber * sizeof(float));
 
 	cudaMallocHost(&gBestCoordinates, dimensions * sizeof(float));
 	cudaMallocHost(&gBestCost, sizeof(float));
@@ -44,7 +59,20 @@ PsoParticles::PsoParticles(Options* options) : Particles(options)
 	_PsoParticles_Initialize_createParticles << <options->getGridSizeInitialization(), options->getBlockSizeInitialization() >> >
 		(d_coordinates, d_velocities, d_prngStates);
 	computeCost();
+
+	cudaMemcpy(gBestCost, d_cost, sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(gBestCoordinates, d_coordinates, dimensions * sizeof(float),
+		cudaMemcpyDeviceToHost);
+	cudaMemcpy(d_gBestCost, d_cost, sizeof(float), cudaMemcpyDeviceToDevice);
+	cudaMemcpy(d_gBestCoordinates, d_coordinates, dimensions * sizeof(float),
+		cudaMemcpyDeviceToDevice);
 	updateGBest();
+
+	cudaMemcpy(d_lBestCost, d_cost, particlesNumber * sizeof(float),
+		cudaMemcpyDeviceToDevice);
+	cudaMemcpy(d_lBestCoordinates, d_coordinates, particlesNumber * dimensions * sizeof(float),
+		cudaMemcpyDeviceToDevice);
+	updateLBest();
 }
 
 void PsoParticles::updateGBest()
@@ -53,13 +81,22 @@ void PsoParticles::updateGBest()
 	thrust::device_ptr<float> temp_gBestCost = thrust::min_element(temp_d_cost,
 		temp_d_cost + particlesNumber);
 
-	int bestParticleId = &temp_gBestCost[0] - &temp_d_cost[0];
-	*gBestCost = temp_gBestCost[0];
-	cudaMemcpy(gBestCoordinates, (d_coordinates + bestParticleId*dimensions),
-		dimensions * sizeof(float), cudaMemcpyDeviceToHost);
+	if (temp_gBestCost[0] < *gBestCost)
+	{
+		int bestParticleId = &temp_gBestCost[0] - &temp_d_cost[0];
+		*gBestCost = temp_gBestCost[0];
+		cudaMemcpy(gBestCoordinates, (d_coordinates + bestParticleId * dimensions),
+			dimensions * sizeof(float), cudaMemcpyDeviceToHost);
 
-	cudaMemcpy(d_gBestCost, (d_cost + bestParticleId), sizeof(float),
-		cudaMemcpyDeviceToDevice);
-	cudaMemcpy(d_gBestCoordinates, (d_coordinates + bestParticleId * dimensions),
-		dimensions * sizeof(float), cudaMemcpyDeviceToDevice);
+		cudaMemcpy(d_gBestCost, (d_cost + bestParticleId), sizeof(float),
+			cudaMemcpyDeviceToDevice);
+		cudaMemcpy(d_gBestCoordinates, (d_coordinates + bestParticleId * dimensions),
+			dimensions * sizeof(float), cudaMemcpyDeviceToDevice);
+	}
+}
+
+void PsoParticles::updateLBest()
+{
+	_PsoParticles_updateLBest << <particlesNumber, dimensions >> > (d_coordinates,
+		d_cost, d_lBestCoordinates, d_lBestCost);
 }
