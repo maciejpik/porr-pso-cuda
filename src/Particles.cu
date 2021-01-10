@@ -7,9 +7,6 @@
 #include<time.h>
 #include<math.h>
 
-#define CUDA_CALL(x) do { if((x) != cudaSuccess) { \
-    printf("Error at %s:%d\n",__FILE__,__LINE__);}} while(0)
-
 const int maxDimensions = 128;
 
 extern __constant__ int d_particlesNumber;

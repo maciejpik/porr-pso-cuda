@@ -9,6 +9,8 @@ __global__ void _PsoParticles_Initialize_createParticles(float* d_coordinates, f
 	curandState* d_prngStates);
 __global__ void _PsoParticles_updateLBest(float* d_coordinates, float* d_cost, float* d_lBestCoordinates,
 	float* d_lBestCost);
+__global__ void _PsoParticles_updatePosition(float* d_coordinates, float* d_velocities, float* d_gBestCoordinates,
+	float* d_lBestCoordinates, curandState* d_prngStates);
 
 class PsoParticles : public Particles
 {
@@ -18,6 +20,7 @@ public:
 
 	void updateGBest();
 	void updateLBest();
+	void updatePosition();
 
 protected:
 	float* d_velocities;

@@ -8,6 +8,7 @@ extern __constant__ int d_particlesNumber;
 extern __constant__ int d_dimensions;
 extern __constant__ boxConstraints d_initializationBoxConstraints;
 extern __constant__ boxConstraints d_boxConstraints;
+extern __constant__ psoConstants d_psoConstants;
 
 Options::Options(int argc, char* argv[])
 {
@@ -24,16 +25,19 @@ Options::Options(int argc, char* argv[])
 
 	initializationBoxConstraints = { -40, 40 };
 	boxConstraints = { -40, 40 };
+	float chi = 0.72984, c1 = 2.05, c2 = 2.05;
+	psoConstants = { chi, chi * c1, chi * c2 };
 
 	task = taskType::TASK_1;
 
 	cudaMemcpyToSymbol(&d_particlesNumber, &particlesNumber, sizeof(int));
 	cudaMemcpyToSymbol(&d_dimensions, &dimesions, sizeof(int));
+	
 
 	cudaMemcpyToSymbol(&d_initializationBoxConstraints, &initializationBoxConstraints,
 		sizeof(boxConstraints));
-	cudaMemcpyToSymbol(&d_boxConstraints, &boxConstraints,
-		sizeof(boxConstraints));
+	cudaMemcpyToSymbol(&d_boxConstraints, &boxConstraints, sizeof(boxConstraints));
+	cudaMemcpyToSymbol(&d_psoConstants, &psoConstants, sizeof(psoConstants));
 
 	setBlockSizeInitialization(64);
 }

@@ -10,6 +10,7 @@ __constant__ int d_particlesNumber;
 __constant__ int d_dimensions;
 __constant__ boxConstraints d_initializationBoxConstraints;
 __constant__ boxConstraints d_boxConstraints;
+__constant__ psoConstants d_psoConstants;
 
 int main(int argc, char* argv[])
 {

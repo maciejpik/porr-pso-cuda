@@ -8,6 +8,13 @@ struct boxConstraints
 	float max;
 };
 
+struct psoConstants
+{
+	float w;
+	float speedLocal;
+	float speedGlobal;
+};
+
 class Options
 {
 public:
@@ -18,6 +25,7 @@ public:
 	int dimesions;
 	boxConstraints initializationBoxConstraints;
 	boxConstraints boxConstraints;
+	psoConstants psoConstants;
 
 	enum taskType {
 		TASK_1,

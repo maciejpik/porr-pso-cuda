@@ -9,10 +9,13 @@
 
 #include <stdio.h>
 
+const int maxDimensions = 128;
+
 extern __constant__ int d_particlesNumber;
 extern __constant__ int d_dimensions;
 extern __constant__ boxConstraints d_initializationBoxConstraints;
 extern __constant__ boxConstraints d_boxConstraints;
+extern __constant__ psoConstants d_psoConstants;
 
 __global__ void _PsoParticles_Initialize_createParticles(float* d_coordinates, float* d_velocities,
 	curandState* d_prngStates)
@@ -43,6 +46,50 @@ __global__ void _PsoParticles_updateLBest(float* d_coordinates, float* d_cost, f
 		d_lBestCost[particleId] < d_cost[particleId];
 		d_lBestCoordinates[particleId * d_dimensions + dimension] = d_coordinates[particleId * d_dimensions + dimension];
 	}
+}
+
+__global__ void _PsoParticles_updatePosition(float* d_coordinates, float* d_velocities, float* d_gBestCoordinates,
+	float* d_lBestCoordinates, curandState* d_prngStates)
+{
+	int particleId = blockIdx.x;
+	int dimension = threadIdx.x;
+	int globalId = threadIdx.x + blockDim.x * blockIdx.x;
+	curandState prngLocalState = d_prngStates[particleId];
+
+	float randLocal = curand_uniform(&prngLocalState);
+	float randGlobal = curand_uniform(&prngLocalState);
+	d_prngStates[particleId] = prngLocalState;
+
+	float newVelocity;
+	float newCoordinates;
+	newVelocity = d_psoConstants.w * d_velocities[globalId] +
+		d_psoConstants.speedLocal * randLocal * (d_lBestCoordinates[globalId] - d_coordinates[globalId]) +
+		d_psoConstants.speedGlobal * randGlobal * (d_gBestCoordinates[dimension] - d_coordinates[globalId]);
+	newCoordinates = d_coordinates[globalId] + newVelocity;
+	
+	__shared__ float k[maxDimensions];
+	k[dimension] = -1;
+
+	if (newCoordinates > d_boxConstraints.max)
+		k[dimension] = (-newCoordinates + d_boxConstraints.max) / newVelocity;
+	else if (newCoordinates < d_boxConstraints.min)
+		k[dimension] = (-newCoordinates + d_boxConstraints.min) / newVelocity;
+	__syncthreads();
+
+	for (int i = maxDimensions >> 1; i > 0; i >>= 1)
+	{
+		if (dimension < i && dimension + i < d_dimensions)
+		{
+			if (k[dimension] < 0 && k[dimension + i] > 0)
+				k[dimension] = k[dimension + i];
+			else if (k[dimension] > k[dimension + i] && k[dimension + i] > 0)
+				k[dimension] = k[dimension + i];
+		}
+		__syncthreads();
+	}
+
+	d_velocities[globalId] = k[0] * newVelocity;
+	d_coordinates[globalId] += k[0] * newVelocity;
 }
 
 PsoParticles::PsoParticles(Options* options) : Particles(options)
@@ -99,4 +146,11 @@ void PsoParticles::updateLBest()
 {
 	_PsoParticles_updateLBest << <particlesNumber, dimensions >> > (d_coordinates,
 		d_cost, d_lBestCoordinates, d_lBestCost);
+}
+
+void PsoParticles::updatePosition()
+{
+	_PsoParticles_updatePosition << <particlesNumber, dimensions >> >
+		(d_coordinates, d_velocities, d_gBestCoordinates, d_lBestCoordinates,
+			d_prngStates);
 }
