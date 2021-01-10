@@ -1,6 +1,6 @@
 ﻿#include "../include/PsoParticles.cuh"
 #include "../include/Particles.cuh"
-#include "../include/Options.h"
+#include "../include/Options.cuh"
 
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
@@ -122,8 +122,22 @@ PsoParticles::PsoParticles(Options* options) : Particles(options)
 	updateLBest();
 }
 
+PsoParticles::~PsoParticles()
+{
+	cudaFree(d_velocities);
+	cudaFree(d_gBestCoordinates);
+	cudaFree(d_gBestCost);
+	cudaFree(d_lBestCoordinates);
+	cudaFree(d_lBestCost);
+
+	cudaFreeHost(gBestCoordinates);
+	cudaFreeHost(gBestCost);
+}
+
 void PsoParticles::updateGBest()
 {
+	computeCost();
+
 	thrust::device_ptr<float> temp_d_cost(d_cost);
 	thrust::device_ptr<float> temp_gBestCost = thrust::min_element(temp_d_cost,
 		temp_d_cost + particlesNumber);
@@ -153,4 +167,14 @@ void PsoParticles::updatePosition()
 	_PsoParticles_updatePosition << <particlesNumber, dimensions >> >
 		(d_coordinates, d_velocities, d_gBestCoordinates, d_lBestCoordinates,
 			d_prngStates);
+}
+
+float* PsoParticles::getBestCoordinates()
+{
+	return gBestCoordinates;
+}
+
+float* PsoParticles::getBestCost()
+{
+	return gBestCost;
 }

@@ -1,5 +1,6 @@
-﻿#include "include/Options.h"
+﻿#include "include/Options.cuh"
 #include "include/PsoParticles.cuh"
+#include "include/Pso.cuh"
 
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
@@ -15,7 +16,7 @@ __constant__ psoConstants d_psoConstants;
 int main(int argc, char* argv[])
 {
 	Options* options = new Options(argc, argv);
-
-	PsoParticles particles(options);
-	particles.print();
+	PsoParticles* particles = new PsoParticles(options);
+	Pso* pso = new Pso(options, particles);
+	pso->solve();
 }

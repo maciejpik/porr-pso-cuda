@@ -26,12 +26,13 @@ public:
 	boxConstraints initializationBoxConstraints;
 	boxConstraints boxConstraints;
 	psoConstants psoConstants;
-
 	enum taskType {
 		TASK_1,
 		TASK_2
 	};
 	taskType task;
+	float stopCriterion;
+	bool verbose;
 
 	void setBlockSizeInitialization(const int blockSize);
 	int getBlockSizeInitialization();

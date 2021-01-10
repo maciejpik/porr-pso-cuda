@@ -84,6 +84,7 @@ Particles::Particles(Options* options) : options(options)
 Particles::~Particles()
 {
 	cudaFree(d_coordinates);
+	cudaFree(d_cost);
 	cudaFree(d_prngStates);
 }
 

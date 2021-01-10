@@ -90,11 +90,13 @@
   <ItemGroup>
     <CudaCompile Include="main.cu" />
     <CudaCompile Include="src\Particles.cu" />
+    <CudaCompile Include="src\Pso.cu" />
     <CudaCompile Include="src\PsoParticles.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\Options.h" />
+    <ClInclude Include="include\Options.cuh" />
     <ClInclude Include="include\Particles.cuh" />
+    <ClInclude Include="include\Pso.cuh" />
     <ClInclude Include="include\PsoParticles.cuh" />
   </ItemGroup>
   <ItemGroup>

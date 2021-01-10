@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Particles.cuh"
-#include "Options.h"
+#include "Options.cuh"
 
 #include <curand_kernel.h>
 
@@ -16,11 +16,14 @@ class PsoParticles : public Particles
 {
 public:
 	PsoParticles(Options* options);
-	virtual ~PsoParticles() = default;
+	virtual ~PsoParticles();
 
 	void updateGBest();
 	void updateLBest();
 	void updatePosition();
+
+	float* getBestCoordinates();
+	float* getBestCost();
 
 protected:
 	float* d_velocities;

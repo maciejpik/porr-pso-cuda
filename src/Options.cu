@@ -1,4 +1,4 @@
-#include "../include/Options.h"
+#include "../include/Options.cuh"
 
 #include <cuda_runtime.h>
 
@@ -27,13 +27,12 @@ Options::Options(int argc, char* argv[])
 	boxConstraints = { -40, 40 };
 	float chi = 0.72984, c1 = 2.05, c2 = 2.05;
 	psoConstants = { chi, chi * c1, chi * c2 };
-
 	task = taskType::TASK_1;
+	stopCriterion = 0.01;
+	verbose = true;
 
 	cudaMemcpyToSymbol(&d_particlesNumber, &particlesNumber, sizeof(int));
 	cudaMemcpyToSymbol(&d_dimensions, &dimesions, sizeof(int));
-	
-
 	cudaMemcpyToSymbol(&d_initializationBoxConstraints, &initializationBoxConstraints,
 		sizeof(boxConstraints));
 	cudaMemcpyToSymbol(&d_boxConstraints, &boxConstraints, sizeof(boxConstraints));

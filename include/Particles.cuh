@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Options.h"
+#include "Options.cuh"
 
 #include <curand_kernel.h>
 
