@@ -7,8 +7,6 @@
 #include <thrust/device_vector.h>
 #include <thrust/extrema.h>
 
-#include <stdio.h>
-
 const int maxDimensions = 128;
 
 extern __constant__ int d_particlesNumber;
@@ -87,6 +85,8 @@ __global__ void _PsoParticles_updatePosition(float* d_coordinates, float* d_velo
 		}
 		__syncthreads();
 	}
+	if (k[0] < 0)
+		k[0] = 1;
 
 	d_velocities[globalId] = k[0] * newVelocity;
 	d_coordinates[globalId] += k[0] * newVelocity;

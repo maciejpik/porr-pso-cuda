@@ -15,6 +15,12 @@ struct psoConstants
 	float speedGlobal;
 };
 
+struct mcConstants
+{
+	float sigma;
+	float T;
+};
+
 class Options
 {
 public:
@@ -26,6 +32,7 @@ public:
 	boxConstraints initializationBoxConstraints;
 	boxConstraints boxConstraints;
 	psoConstants psoConstants;
+	mcConstants mcConstants;
 	enum taskType {
 		TASK_1,
 		TASK_2

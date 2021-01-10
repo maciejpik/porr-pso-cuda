@@ -20,14 +20,11 @@ __global__ void _Particles_Initialize_createPrng(int seed, curandState* d_prngSt
 	curand_init(seed, particleId, 0, &d_prngStates[particleId]);
 }
 
-__global__ void _Particles_computeCost_Task1(float* d_coordinates, float* d_cost)
+__device__ float _Particles_computeCost_Task1(float coordinateValue)
 {
 	__shared__ float subSum[maxDimensions];
 	__shared__ float subMult[maxDimensions];
 
-	int globalCoordinateId = threadIdx.x + blockIdx.x * blockDim.x;
-	float coordinateValue = d_coordinates[globalCoordinateId];
-	
 	subSum[threadIdx.x] = coordinateValue * coordinateValue;
 	subMult[threadIdx.x] = cosf(coordinateValue / (threadIdx.x + 1));
 	__syncthreads();
@@ -41,21 +38,18 @@ __global__ void _Particles_computeCost_Task1(float* d_coordinates, float* d_cost
 		}
 		__syncthreads();
 	}
-	
-	d_cost[blockIdx.x] = subSum[0] / 40.0 + 1 - subMult[0];
-	
+
+	return subSum[0] / 40.0 + 1 - subMult[0];
 }
-__global__ void _Particles_computeCost_Task2(float* d_coordinates, float* d_cost)
+
+__device__ float _Particles_computeCost_Task2(float coordinateValue, float coordinateValuePlusOne)
 {
 	__shared__ float subSum[maxDimensions];
-	__shared__ float localCoordinates[maxDimensions];
-	localCoordinates[threadIdx.x] = d_coordinates[threadIdx.x + blockIdx.x * blockDim.x];
-	__syncthreads();
 
-	subSum[threadIdx.x] = 100 * (localCoordinates[threadIdx.x + 1] - localCoordinates[threadIdx.x] * localCoordinates[threadIdx.x]) *
-		(localCoordinates[threadIdx.x + 1] - localCoordinates[threadIdx.x] * localCoordinates[threadIdx.x]) +
-		(1 - localCoordinates[threadIdx.x] * localCoordinates[threadIdx.x]) *
-		(1 - localCoordinates[threadIdx.x] * localCoordinates[threadIdx.x]);
+	subSum[threadIdx.x] = 100 * (coordinateValuePlusOne - coordinateValue * coordinateValue) *
+		(coordinateValuePlusOne - coordinateValue * coordinateValue) +
+		(1 - coordinateValue * coordinateValue) *
+		(1 - coordinateValue * coordinateValue);
 	__syncthreads();
 
 	for (int i = maxDimensions >> 1; i > 0; i >>= 1)
@@ -65,7 +59,21 @@ __global__ void _Particles_computeCost_Task2(float* d_coordinates, float* d_cost
 		__syncthreads();
 	}
 
-	d_cost[blockIdx.x] = subSum[0];
+	return subSum[0];
+}
+
+__global__ void _Particles_computeCost_Task1(float* d_coordinates, float* d_cost)
+{
+	d_cost[blockIdx.x] = _Particles_computeCost_Task1(d_coordinates[threadIdx.x + blockIdx.x * blockDim.x]);
+}
+
+__global__ void _Particles_computeCost_Task2(float* d_coordinates, float* d_cost)
+{
+	__shared__ float localCoordinates[maxDimensions];
+	localCoordinates[threadIdx.x] = d_coordinates[threadIdx.x + blockIdx.x * blockDim.x];
+	__syncthreads();
+
+	d_cost[blockIdx.x] = _Particles_computeCost_Task2(localCoordinates[threadIdx.x], localCoordinates[threadIdx.x + 1]);
 }
 
 Particles::Particles(Options* options) : options(options)
