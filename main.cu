@@ -14,7 +14,7 @@ __constant__ mcConstants d_mcConstants;
 int main(int argc, char* argv[])
 {
 	Options* options = new Options(argc, argv);
-	options->verbose = true;
+	options->verbose = false;
 
 	PsoParticles* particles = new PsoParticles(options);
 	Pso* pso = new Pso(options, particles);

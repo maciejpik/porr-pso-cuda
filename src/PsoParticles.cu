@@ -67,8 +67,8 @@ __global__ void _PsoParticles_updatePositions(float* d_positions, float* d_veloc
 	float randGlobal = curand_uniform(&prngLocalState);
 	d_prngStates[particleId] = prngLocalState;
 
-	float* newVelocity = new float[d_dimensions];
-	float* newPosition = new float[d_dimensions];
+	float newVelocity[maxDimension];
+	float newPosition[maxDimension];
 
 	float k = 1;
 	for (int coordIdx = particleId, i = 0; coordIdx < d_particlesNumber * d_dimensions;
@@ -95,8 +95,6 @@ __global__ void _PsoParticles_updatePositions(float* d_positions, float* d_veloc
 		d_positions[coordIdx] += k * newVelocity[i];
 		d_velocities[coordIdx] = k * newVelocity[i];
 	}
-
-	delete newVelocity; delete newPosition;
 }
 
 template __global__ void _PsoParticles_updatePositions<16>(float* d_positions, float* d_velocities, float* d_gBestPosition,
