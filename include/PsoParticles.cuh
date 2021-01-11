@@ -5,33 +5,33 @@
 
 #include <curand_kernel.h>
 
-__global__ void _PsoParticles_Initialize_createParticles(float* d_coordinates, float* d_velocities,
+__global__ void _PsoParticles_PsoParticles_initialize(float* d_positions, float* d_velocities,
 	curandState* d_prngStates);
-__global__ void _PsoParticles_updateLBest(float* d_coordinates, float* d_cost, float* d_lBestCoordinates,
-	float* d_lBestCost);
-__global__ void _PsoParticles_updatePosition(float* d_coordinates, float* d_velocities, float* d_gBestCoordinates,
-	float* d_lBestCoordinates, curandState* d_prngStates);
+__global__ void _PsoParticles_updateLBest(float* d_positions, float* d_costs, float* d_lBestPositions,
+	float* d_lBestCosts);
+__global__ void _PsoParticles_updatePositions(float* d_positions, float* d_velocities, float* d_gBestPosition,
+	float* d_lBestPositions, curandState* d_prngStates);
 
 class PsoParticles : public Particles
 {
 public:
 	PsoParticles(Options* options);
-	virtual ~PsoParticles();
+	~PsoParticles();
 
 	void updateGBest();
 	void updateLBest();
-	void updatePosition();
+	void updatePositions();
 
-	float* getBestCoordinates();
-	float* getBestCost();
+	float* getBestPosition() { return gBestPosition; }
+	float* getBestCost() { return gBestCost; }
 
-protected:
+private:
 	float* d_velocities;
-	float* d_gBestCoordinates;
+	float* d_gBestPosition;
 	float* d_gBestCost;
-	float* d_lBestCoordinates;
-	float* d_lBestCost;
+	float* d_lBestPositions;
+	float* d_lBestCosts;
 
-	float* gBestCoordinates;
+	float* gBestPosition;
 	float* gBestCost;
 };

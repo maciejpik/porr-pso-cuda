@@ -6,89 +6,76 @@
 #include <thrust/device_vector.h>
 #include <thrust/extrema.h>
 
-const int maxDimensions = 128;
-
 extern __constant__ int d_particlesNumber;
 extern __constant__ int d_dimensions;
 extern __constant__ boxConstraints d_initializationBoxConstraints;
-extern __constant__ boxConstraints d_boxConstraints;
+extern __constant__ boxConstraints d_solutionBoxConstraints;
 extern __constant__ psoConstants d_psoConstants;
 extern __constant__ mcConstants d_mcConstants;
 
-__global__ void _McParticles_Initialize_createParticles(float* d_coordinates, curandState* d_prngStates)
+__global__ void _McParticles_McParticles_initialize(float* d_positions, curandState* d_prngStates)
 {
-	int creatorId = threadIdx.x + blockIdx.x * blockDim.x;
-	curandState prngLocalState = d_prngStates[creatorId];
+	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
+	if (particleId >= d_particlesNumber)
+		return;
+	curandState prngLocalState = d_prngStates[particleId];
 
-	for (int offset = 0; offset < d_particlesNumber * d_dimensions; offset += d_particlesNumber)
+	for (int coordIdx = particleId; coordIdx < d_particlesNumber * d_dimensions;
+		coordIdx += d_particlesNumber)
 	{
-		d_coordinates[offset + creatorId] = d_initializationBoxConstraints.min +
+		d_positions[coordIdx] = d_initializationBoxConstraints.min +
 			(d_initializationBoxConstraints.max - d_initializationBoxConstraints.min) * curand_uniform(&prngLocalState);
 	}
 
-	d_prngStates[creatorId] = prngLocalState;
+	d_prngStates[particleId] = prngLocalState;
 }
 
-template<int taskId>
-__global__ void _McParticles_updatePosition(float* d_coordinates, float* d_cost, curandState* d_prngStates)
+template<int taskId, int maxDimension>
+__global__ void _McParticles_McParticles_initialize(float* d_positions, float* d_costs,
+	curandState* d_prngStates)
 {
-	int particleId = blockIdx.x;
-	int dimension = threadIdx.x;
-	int globalId = threadIdx.x + blockDim.x * blockIdx.x;
+	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
+	if (particleId >= d_particlesNumber)
+		return;
 	curandState prngLocalState = d_prngStates[particleId];
 
-	float deltaCoordinates[maxDimensions];
-	for (int i = 0; i < d_dimensions; i++)
-		deltaCoordinates[i] = (-1 + 2*curand_uniform(&prngLocalState)) * d_mcConstants.sigma;
+	float deltaPosition[maxDimension];
+	float newPosition[maxDimension];
 
-	float newVelocity = deltaCoordinates[dimension];
-	float coordinate = d_coordinates[globalId];
-	float newCoordinate = coordinate + newVelocity;
-
-	__shared__ float k[maxDimensions];
-	k[dimension] = -1;
-
-	if (newCoordinate > d_boxConstraints.max)
-		k[dimension] = (-newCoordinate + d_boxConstraints.max) / newVelocity;
-	else if (newCoordinate < d_boxConstraints.min)
-		k[dimension] = (-newCoordinate + d_boxConstraints.min) / newVelocity;
-	__syncthreads();
-
-	for (int i = maxDimensions >> 1; i > 0; i >>= 1)
+	float k = 1;
+	for (int coordIdx = particleId, i = 0; coordIdx < d_particlesNumber * d_dimensions;
+		coordIdx += d_particlesNumber, i++)
 	{
-		if (dimension < i && dimension + i < d_dimensions)
-		{
-			if (k[dimension] < 0 && k[dimension + i] > 0)
-				k[dimension] = k[dimension + i];
-			else if (k[dimension] > k[dimension + i] && k[dimension + i] > 0)
-				k[dimension] = k[dimension + i];
-		}
-		__syncthreads();
-	}
-	if (k[0] < 0)
-		k[0] = 1;
+		deltaPosition[i] = (-1 + 2 * curand_uniform(&prngLocalState)) * d_mcConstants.sigma;
+		newPosition[i] = d_positions[coordIdx] + deltaPosition[i];
 
-	newCoordinate = coordinate + k[0] * newVelocity;
+		float k_temp = 1;
+		if (newPosition[i] > d_solutionBoxConstraints.max)
+			k_temp = (-newPosition[i] + d_solutionBoxConstraints.max) / deltaPosition[i];
+		else if (newPosition[i] < d_solutionBoxConstraints.min)
+			k_temp = (-newPosition[i] + d_solutionBoxConstraints.min) / deltaPosition[i];
+
+		if (k_temp < k && k_temp > 0)
+			k = k_temp;
+	}
+
+	for (int coordIdx = particleId, i = 0; coordIdx < d_particlesNumber * d_dimensions;
+		coordIdx += d_particlesNumber, i++)
+		newPosition[i] = d_positions[coordIdx] + k * deltaPosition[i];
+
 	float newCost;
+	if(taskId == 1)
+		newCost = _PsoParticles_computeCosts_Task1(newPosition);
+	else if(taskId == 2)
+		newCost = _PsoParticles_computeCosts_Task2(newPosition);
 
-	if (taskId == 1)
-	{
-		newCost = _Particles_computeCost_Task1(newCoordinate);
-	}
-	else if (taskId == 2)
-	{
-		__shared__ float newCoordinates[maxDimensions];
-		newCoordinates[dimension] = newCoordinate;
-		__syncthreads();
-
-		newCost = _Particles_computeCost_Task2(newCoordinates[dimension], newCoordinates[dimension + 1]);
-	}
-
-	float currentCost = d_cost[particleId];
+	float currentCost = d_costs[particleId];
 	if (newCost < currentCost)
 	{
-		d_cost[particleId] = newCost;
-		d_coordinates[globalId] = newCoordinate;
+		d_costs[particleId] = newCost;
+		for (int coordIdx = particleId, i = 0; coordIdx < d_particlesNumber * d_dimensions;
+			coordIdx += d_particlesNumber, i++)
+			d_positions[coordIdx] = newPosition[i];
 	}
 	else
 	{
@@ -96,65 +83,143 @@ __global__ void _McParticles_updatePosition(float* d_coordinates, float* d_cost,
 		float threshold = __expf(-(newCost - currentCost) / d_mcConstants.T);
 		if (rand < threshold)
 		{
-			d_cost[particleId] = newCost;
-			d_coordinates[globalId] = newCoordinate;
+			d_costs[particleId] = newCost;
+			for (int coordIdx = particleId, i = 0; coordIdx < d_particlesNumber * d_dimensions;
+				coordIdx += d_particlesNumber, i++)
+				d_positions[coordIdx] = newPosition[i];
 		}
 	}
+
 	d_prngStates[particleId] = prngLocalState;
 }
 
-template __global__ void _McParticles_updatePosition<1>(float* d_coordinates, float* d_cost, curandState* d_prngStates);
-template __global__ void _McParticles_updatePosition<2>(float* d_coordinates, float* d_cost, curandState* d_prngStates);
+template __global__ void _McParticles_McParticles_initialize<1, 16>(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
+template __global__ void _McParticles_McParticles_initialize<2, 16>(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
+template __global__ void _McParticles_McParticles_initialize<1, 32>(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
+template __global__ void _McParticles_McParticles_initialize<2, 32>(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
+template __global__ void _McParticles_McParticles_initialize<1, 64>(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
+template __global__ void _McParticles_McParticles_initialize<2, 64>(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
+template __global__ void _McParticles_McParticles_initialize<1, 128>(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
+template __global__ void _McParticles_McParticles_initialize<2, 128>(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
+template __global__ void _McParticles_McParticles_initialize<1, 256>(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
+template __global__ void _McParticles_McParticles_initialize<2, 256>(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
+template __global__ void _McParticles_McParticles_initialize<1, 512>(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
+template __global__ void _McParticles_McParticles_initialize<2, 512>(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
 
-McParticles::McParticles(Options* options) : Particles(options)
+
+McParticles::McParticles(Options* options)
+	: Particles(options)
 {
-	lastBestParticleId = 0;
+	bestParticleId = 0;
 
-	cudaMallocHost(&gBestCoordinates, dimensions * sizeof(float));
+	cudaMallocHost(&gBestPosition, options->dimensions * sizeof(float));
 	cudaMallocHost(&gBestCost, sizeof(float));
 
-	_McParticles_Initialize_createParticles << <options->getGridSizeInitialization(), options->getBlockSizeInitialization() >> >
-		(d_coordinates, d_prngStates);
-	computeCost();
+	_McParticles_McParticles_initialize << <options->gridSize, options->blockSize >> >
+		(d_positions, d_prngStates);
+	updateCosts();
 
-	cudaMemcpy(gBestCost, d_cost, sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpy(gBestCoordinates, d_coordinates, dimensions * sizeof(float),
-		cudaMemcpyDeviceToHost);
+	cudaMemcpy2D(gBestPosition, sizeof(float), d_positions, options->particlesNumber * sizeof(float),
+		sizeof(float), options->dimensions, cudaMemcpyDeviceToHost);
+	cudaMemcpy(gBestCost, d_costs, sizeof(float), cudaMemcpyDeviceToHost);
 }
 
 McParticles::~McParticles()
 {
-	cudaFreeHost(gBestCoordinates);
+	cudaFreeHost(gBestPosition);
 	cudaFreeHost(gBestCost);
 }
 
-void McParticles::updatePosition()
+float* McParticles::getBestPosition()
 {
-	if(options->task == options->taskType::TASK_1)
-		_McParticles_updatePosition <1> << <particlesNumber, dimensions >> > (d_coordinates, d_cost, d_prngStates);
-	else if (options->task == options->taskType::TASK_2)
-		_McParticles_updatePosition <2> << <particlesNumber, dimensions >> > (d_coordinates, d_cost, d_prngStates);
-}
+	cudaMemcpy2D(gBestPosition, sizeof(float), d_positions + bestParticleId,
+		options->particlesNumber * sizeof(float),
+		sizeof(float), options->dimensions, cudaMemcpyDeviceToHost);
 
-float* McParticles::getBestCoordinates()
-{
-	cudaMemcpy(gBestCoordinates, (d_coordinates + lastBestParticleId * dimensions),
-		dimensions * sizeof(float), cudaMemcpyDeviceToHost);
-
-	return gBestCoordinates;
+	return gBestPosition;
 }
 
 float* McParticles::getBestCost()
 {
-	thrust::device_ptr<float> temp_d_cost(d_cost);
-	thrust::device_ptr<float> temp_gBestCost = thrust::min_element(temp_d_cost,
-		temp_d_cost + particlesNumber);
+	thrust::device_ptr<float> temp_d_costs(d_costs);
+	thrust::device_ptr<float> temp_gBestCost = thrust::min_element(temp_d_costs,
+		temp_d_costs + options->particlesNumber);
 
 	if (temp_gBestCost[0] < *gBestCost)
 	{
-		int lastbestParticleId = &temp_gBestCost[0] - &temp_d_cost[0];
+		bestParticleId = &temp_gBestCost[0] - &temp_d_costs[0];
 		*gBestCost = temp_gBestCost[0];
 	}
 
 	return gBestCost;
+}
+
+void McParticles::updatePositions()
+{
+	if (options->dimensions < 16)
+	{
+		if (options->task == options->taskType::TASK_1)
+			_McParticles_McParticles_initialize<1, 16> << <options->gridSize, options->blockSize >> >
+				(d_positions, d_costs, d_prngStates);
+		else if (options->task == options->taskType::TASK_2)
+			_McParticles_McParticles_initialize<2, 16> << <options->gridSize, options->blockSize >> >
+				(d_positions, d_costs, d_prngStates);
+	}
+	else if (options->dimensions < 32)
+	{
+		if (options->task == options->taskType::TASK_1)
+			_McParticles_McParticles_initialize<1, 32> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_costs, d_prngStates);
+		else if (options->task == options->taskType::TASK_2)
+			_McParticles_McParticles_initialize<2, 32> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_costs, d_prngStates);
+	}
+	else if (options->dimensions < 64)
+	{
+		if (options->task == options->taskType::TASK_1)
+			_McParticles_McParticles_initialize<1, 64> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_costs, d_prngStates);
+		else if (options->task == options->taskType::TASK_2)
+			_McParticles_McParticles_initialize<2, 64> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_costs, d_prngStates);
+	}
+	else if (options->dimensions < 128)
+	{
+		if (options->task == options->taskType::TASK_1)
+			_McParticles_McParticles_initialize<1, 128> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_costs, d_prngStates);
+		else if (options->task == options->taskType::TASK_2)
+			_McParticles_McParticles_initialize<2, 128> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_costs, d_prngStates);
+	}
+	else if(options->dimensions < 256)
+	{
+		if (options->task == options->taskType::TASK_1)
+			_McParticles_McParticles_initialize<1, 256> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_costs, d_prngStates);
+		else if (options->task == options->taskType::TASK_2)
+			_McParticles_McParticles_initialize<2, 256> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_costs, d_prngStates);
+	}
+	else
+	{
+		if (options->task == options->taskType::TASK_1)
+			_McParticles_McParticles_initialize<1, 512> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_costs, d_prngStates);
+		else if (options->task == options->taskType::TASK_2)
+			_McParticles_McParticles_initialize<2, 512> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_costs, d_prngStates);
+	}
 }

@@ -15,26 +15,27 @@ void Pso::solve()
 	int iteration = 0, stop = 0;
 	float cost = *(particles->getBestCost());
 
-	if(options->verbose)
+	if (options->verbose)
 		printf("Iteration %4d: cost = %.4f\n", iteration, cost);
-	while (!stop)
+	while (!stop )
 	{
 		iteration++;
 
-		particles->updatePosition();
+		particles->updatePositions();
+		particles->updateCosts();
 		particles->updateGBest();
 		particles->updateLBest();
-
+	
 		cost = *(particles->getBestCost());
 
-		if(options->verbose)
+		if (options->verbose)
 			printf("Iteration %4d: cost = %.4f\n", iteration, cost);
 
 		if (cost < options->stopCriterion)
 			stop = true;
 	}
 	auto tEnd = std::chrono::high_resolution_clock::now();
-	long long int duration = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart).count();
+	long long int duration = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
 
-	printf("Solution f(x) = %.4f found after %d iterations (%lld ms)\n", cost, iteration, duration);
+	printf("Solution f(x) = %.8f found after %d iterations (%lf s)\n", cost, iteration, duration / 1000000.0);
 }

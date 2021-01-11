@@ -1,132 +1,137 @@
 ﻿#include "../include/Particles.cuh"
+#include "../include/Options.cuh"
 
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
-
-#include<stdio.h>
-#include<time.h>
-#include<math.h>
-
-const int maxDimensions = 128;
+#include <time.h>
+#include <stdio.h>
 
 extern __constant__ int d_particlesNumber;
 extern __constant__ int d_dimensions;
 extern __constant__ boxConstraints d_initializationBoxConstraints;
-extern __constant__ boxConstraints d_boxConstraints;
+extern __constant__ boxConstraints d_solutionBoxConstraints;
 
-__global__ void _Particles_Initialize_createPrng(int seed, curandState* d_prngStates)
+__global__ void _Particles_Particles_initPrng(int seed, curandState* d_prngStates)
 {
 	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
+	if (particleId >= d_particlesNumber)
+		return;
 	curand_init(seed, particleId, 0, &d_prngStates[particleId]);
 }
 
-__device__ float _Particles_computeCost_Task1(float coordinateValue)
+__global__ void _PsoParticles_computeCosts_Task1(float* d_positions, float* d_costs)
 {
-	__shared__ float subSum[maxDimensions];
-	__shared__ float subMult[maxDimensions];
+	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
+	if (particleId >= d_particlesNumber)
+		return;
 
-	subSum[threadIdx.x] = coordinateValue * coordinateValue;
-	subMult[threadIdx.x] = cosf(coordinateValue / (threadIdx.x + 1));
-	__syncthreads();
-
-	for (int i = maxDimensions >> 1; i > 0; i >>= 1)
+	float subSum = 0, subProduct = 1;
+	for (int coordIdx = particleId, i = 1; coordIdx < d_particlesNumber * d_dimensions;
+		coordIdx += d_particlesNumber, i++)
 	{
-		if (threadIdx.x < i && threadIdx.x + i < blockDim.x)
-		{
-			subSum[threadIdx.x] += subSum[threadIdx.x + i];
-			subMult[threadIdx.x] *= subMult[threadIdx.x + i];
-		}
-		__syncthreads();
+		float x_i = d_positions[coordIdx];
+		subSum += x_i * x_i;
+		subProduct *= cosf(x_i / i);
 	}
 
-	return subSum[0] / 40.0 + 1 - subMult[0];
+	d_costs[particleId] = subSum / 40.0 + 1 - subProduct;
 }
 
-__device__ float _Particles_computeCost_Task2(float coordinateValue, float coordinateValuePlusOne)
+__device__ float _PsoParticles_computeCosts_Task1(float* position)
 {
-	__shared__ float subSum[maxDimensions];
-
-	subSum[threadIdx.x] = 100 * (coordinateValuePlusOne - coordinateValue * coordinateValue) *
-		(coordinateValuePlusOne - coordinateValue * coordinateValue) +
-		(1 - coordinateValue * coordinateValue) *
-		(1 - coordinateValue * coordinateValue);
-	__syncthreads();
-
-	for (int i = maxDimensions >> 1; i > 0; i >>= 1)
+	float subSum = 0, subProduct = 1;
+	for (int i = 0; i < d_dimensions; i++)
 	{
-		if (threadIdx.x < i && threadIdx.x + i < blockDim.x - 1)
-			subSum[threadIdx.x] += subSum[threadIdx.x + i];
-		__syncthreads();
+		float x_i = position[i];
+		subSum += x_i * x_i;
+		subProduct *= cosf(x_i / (i + 1));
 	}
 
-	return subSum[0];
+	return subSum / 40.0 + 1 - subProduct;
 }
 
-__global__ void _Particles_computeCost_Task1(float* d_coordinates, float* d_cost)
+__global__ void _PsoParticles_computeCosts_Task2(float* d_positions, float* d_costs)
 {
-	d_cost[blockIdx.x] = _Particles_computeCost_Task1(d_coordinates[threadIdx.x + blockIdx.x * blockDim.x]);
+	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
+	if (particleId >= d_particlesNumber)
+		return;
+
+	float subSum = 0;
+	int coordIdx = particleId;
+	float x_i = 0, x_i_1 = d_positions[coordIdx];
+	for (coordIdx += d_particlesNumber; coordIdx < d_particlesNumber * d_dimensions;
+		coordIdx += d_particlesNumber)
+	{
+		x_i = x_i_1;
+		x_i_1 = d_positions[coordIdx];
+		subSum += 100 * (x_i_1 - x_i * x_i) * (x_i_1 - x_i * x_i) +
+			(1 - x_i) * (1 - x_i);
+	}
+
+	d_costs[particleId] = subSum;
 }
 
-__global__ void _Particles_computeCost_Task2(float* d_coordinates, float* d_cost)
+__device__ float _PsoParticles_computeCosts_Task2(float* position)
 {
-	__shared__ float localCoordinates[maxDimensions];
-	localCoordinates[threadIdx.x] = d_coordinates[threadIdx.x + blockIdx.x * blockDim.x];
-	__syncthreads();
+	float subSum = 0;
+	float x_i = 0, x_i_1 = position[0];
+	for (int i = 1; i < d_dimensions; i++)
+	{
+		x_i = x_i_1;
+		x_i_1 = position[i];
+		subSum += 100 * (x_i_1 - x_i * x_i) * (x_i_1 - x_i * x_i) +
+			(1 - x_i) * (1 - x_i);
+	}
 
-	d_cost[blockIdx.x] = _Particles_computeCost_Task2(localCoordinates[threadIdx.x], localCoordinates[threadIdx.x + 1]);
+	return subSum;
 }
 
-Particles::Particles(Options* options) : options(options)
+Particles::Particles(Options* options)
+	: options(options)
 {
-	particlesNumber = options->particlesNumber;
-	dimensions = options->dimesions;
+	cudaMalloc(&d_positions, options->particlesNumber * options->dimensions * sizeof(float));
+	cudaMalloc(&d_costs, options->particlesNumber * sizeof(float));
+	cudaMalloc(&d_prngStates, options->particlesNumber * sizeof(curandState));
 
-	cudaMalloc(&d_coordinates, particlesNumber * dimensions * sizeof(float));
-	cudaMalloc(&d_prngStates, particlesNumber * dimensions * sizeof(curandState));
-	cudaMalloc(&d_cost, particlesNumber * sizeof(float));
-
-	_Particles_Initialize_createPrng << <options->getGridSizeInitialization(), options->getBlockSizeInitialization() >> >
-		((int)time(NULL), d_prngStates);
+	_Particles_Particles_initPrng<<<options->gridSize, options->blockSize>>>(time(NULL), d_prngStates);
 }
 
 Particles::~Particles()
 {
-	cudaFree(d_coordinates);
-	cudaFree(d_cost);
+	cudaFree(d_positions);
+	cudaFree(d_positions);
 	cudaFree(d_prngStates);
 }
 
 void Particles::print()
 {
-	float* coordinates = new float[particlesNumber * dimensions * sizeof(float)];
-	cudaMemcpy(coordinates, d_coordinates, particlesNumber * dimensions * sizeof(float),
+	float* positions = new float[options->particlesNumber * options->dimensions * sizeof(float)];
+	cudaMemcpy(positions, d_positions, options->particlesNumber * options->dimensions * sizeof(float),
 		cudaMemcpyDeviceToHost);
 
-	float* cost = new float[particlesNumber * sizeof(float)];
-	cudaMemcpy(cost, d_cost, particlesNumber * sizeof(float), cudaMemcpyDeviceToHost);
+	float* costs = new float[options->particlesNumber * sizeof(float)];
+	cudaMemcpy(costs, d_costs, options->particlesNumber * sizeof(float), cudaMemcpyDeviceToHost);
 
-	for (int particleId = 0; particleId < particlesNumber; particleId++)
+	for (int particleId = 0; particleId < options->particlesNumber; particleId++)
 	{
 		printf("[%d] = (", particleId);
-		int firstCoord = particleId * dimensions;
-		for (int coordinate = 0; coordinate < dimensions; coordinate++)
+		int coordIdx;
+		for (coordIdx = particleId; coordIdx < options->particlesNumber * (options->dimensions - 1);
+			coordIdx += options->particlesNumber)
 		{
-			if (coordinate != dimensions - 1)
-				printf("% .2f,\t", coordinates[firstCoord + coordinate]);
-			else
-				printf("% .2f)", coordinates[firstCoord + coordinate]);
+			printf("% .2f,\t", positions[coordIdx]);
 		}
-		printf("\t f(x) =\t% .2f\n", cost[particleId]);
+		printf("% .2f)", positions[coordIdx]);
+		printf("\t f(x) =\t% .2f\n", costs[particleId]);
 	}
-	delete coordinates;
+
+	delete positions, costs;
 }
 
-void Particles::computeCost()
+void Particles::updateCosts()
 {
 	if (options->task == options->taskType::TASK_1)
-	{
-		_Particles_computeCost_Task1 << <particlesNumber, dimensions >> > (d_coordinates, d_cost);
-	}
+		_PsoParticles_computeCosts_Task1 << <options->gridSize, options->blockSize >> > (d_positions, d_costs);
 	else if (options->task == options->taskType::TASK_2)
-		_Particles_computeCost_Task2 << <particlesNumber, dimensions >> > (d_coordinates, d_cost);
+		_PsoParticles_computeCosts_Task2 << <options->gridSize, options->blockSize >> > (d_positions, d_costs);
 }

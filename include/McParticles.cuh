@@ -5,22 +5,23 @@
 
 #include <curand_kernel.h>
 
-__global__ void _McParticles_Initialize_createParticles(float* d_coordinates, curandState* d_prngStates);
-template<int> __global__ void _McParticles_updatePosition(float* d_coordinates, float* d_cost, curandState* d_prngStates);
+__global__ void _McParticles_McParticles_initialize(float* d_positions, curandState* d_prngStates);
+template<int> __global__ void _McParticles_McParticles_initialize(float* d_positions, float* d_costs,
+	curandState* d_prngStates);
 
 class McParticles : public Particles
 {
 public:
 	McParticles(Options* options);
-	virtual ~McParticles();
+	~McParticles();
 
-	void updatePosition();
+	void updatePositions();
 
-	float* getBestCoordinates();
+	float* getBestPosition();
 	float* getBestCost();
 
-protected:
-	float* gBestCoordinates;
+private:
+	float* gBestPosition;
 	float* gBestCost;
-	int lastBestParticleId;
+	int bestParticleId;
 };

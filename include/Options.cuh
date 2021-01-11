@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cuda_runtime.h>
-
 struct boxConstraints
 {
 	float min;
@@ -28,9 +26,9 @@ public:
 	virtual ~Options() = default;
 
 	int particlesNumber;
-	int dimesions;
+	int dimensions;
 	boxConstraints initializationBoxConstraints;
-	boxConstraints boxConstraints;
+	boxConstraints solutionBoxConstraints;
 	psoConstants psoConstants;
 	mcConstants mcConstants;
 	enum taskType {
@@ -40,12 +38,6 @@ public:
 	taskType task;
 	float stopCriterion;
 	bool verbose;
-
-	void setBlockSizeInitialization(const int blockSize);
-	int getBlockSizeInitialization();
-	int getGridSizeInitialization();
-
-private:
-	int blockSize_initialization;
-	int gridSize_initialization;
+	int blockSize;
+	int gridSize;
 };
