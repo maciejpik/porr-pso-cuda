@@ -32,7 +32,7 @@ Options::Options(int argc, char* argv[])
 	task = taskType::TASK_1;
 	stopCriterion = 0.01f;
 	verbose = true;
-	blockSize = 64;
+	blockSize = 512;
 	gridSize = (particlesNumber + blockSize - 1) / blockSize;
 
 	cudaMemcpyToSymbol(&d_particlesNumber, &particlesNumber, sizeof(int));

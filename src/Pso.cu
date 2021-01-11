@@ -37,5 +37,5 @@ void Pso::solve()
 	auto tEnd = std::chrono::high_resolution_clock::now();
 	long long int duration = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
 
-	printf("Solution f(x) = %.4f found after %d iterations (%lf s)\n", cost, iteration, duration / 1000000.0);
+	printf("Solution f(x) = %.8f found after %d iterations (%lf s)\n", cost, iteration, duration / 1000000.0);
 }
