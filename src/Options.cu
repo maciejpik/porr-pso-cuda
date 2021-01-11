@@ -29,7 +29,7 @@ Options::Options(int argc, char* argv[])
 	float chi = 0.72984f, c1 = 2.05f, c2 = 2.05f;
 	psoConstants = { chi, chi * c1, chi * c2 };
 	mcConstants = { .1f, .01f };
-	task = taskType::TASK_2;
+	task = taskType::TASK_1;
 	stopCriterion = 0.01f;
 	verbose = true;
 
@@ -40,22 +40,4 @@ Options::Options(int argc, char* argv[])
 	cudaMemcpyToSymbol(&d_boxConstraints, &boxConstraints, sizeof(boxConstraints));
 	cudaMemcpyToSymbol(&d_psoConstants, &psoConstants, sizeof(psoConstants));
 	cudaMemcpyToSymbol(&d_mcConstants, &mcConstants, sizeof(mcConstants));
-
-	setBlockSizeInitialization(64);
-}
-
-int Options::getBlockSizeInitialization()
-{
-	return blockSize_initialization;
-}
-
-int Options::getGridSizeInitialization()
-{
-	return gridSize_initialization;
-}
-
-void Options::setBlockSizeInitialization( int blockSize )
-{
-	blockSize_initialization = blockSize;
-	gridSize_initialization = (particlesNumber + blockSize - 1) / blockSize;
 }

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cuda_runtime.h>
-
 struct boxConstraints
 {
 	float min;
@@ -40,12 +38,4 @@ public:
 	taskType task;
 	float stopCriterion;
 	bool verbose;
-
-	void setBlockSizeInitialization(const int blockSize);
-	int getBlockSizeInitialization();
-	int getGridSizeInitialization();
-
-private:
-	int blockSize_initialization;
-	int gridSize_initialization;
 };

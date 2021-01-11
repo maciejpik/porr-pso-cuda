@@ -1,8 +1,4 @@
 ﻿#include "include/Options.cuh"
-#include "include/PsoParticles.cuh"
-#include "include/Pso.cuh"
-#include "include/McParticles.cuh"
-#include "include/Mc.cuh"
 
 #include <cuda_runtime.h>
 
@@ -17,12 +13,4 @@ int main(int argc, char* argv[])
 {
 	Options* options = new Options(argc, argv);
 	options->verbose = false;
-
-	PsoParticles* particles = new PsoParticles(options);
-	Pso* pso = new Pso(options, particles);
-	pso->solve();
-
-	//McParticles* particles = new McParticles(options);
-	//Mc* mc = new Mc(options, particles);
-	//mc->solve();
 }

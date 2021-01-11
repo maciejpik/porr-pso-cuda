@@ -89,19 +89,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="main.cu" />
-    <CudaCompile Include="src\Mc.cu" />
-    <CudaCompile Include="src\McParticles.cu" />
-    <CudaCompile Include="src\Particles.cu" />
-    <CudaCompile Include="src\Pso.cu" />
-    <CudaCompile Include="src\PsoParticles.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\Mc.cuh" />
-    <ClInclude Include="include\McParticles.cuh" />
     <ClInclude Include="include\Options.cuh" />
-    <ClInclude Include="include\Particles.cuh" />
-    <ClInclude Include="include\Pso.cuh" />
-    <ClInclude Include="include\PsoParticles.cuh" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Options.cu" />
