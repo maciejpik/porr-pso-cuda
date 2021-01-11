@@ -18,7 +18,7 @@ __global__ void _PsoParticles_PsoParticles_initialize(float* d_positions, float*
 	curandState* d_prngStates)
 {
 	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
-	if (particleId > d_particlesNumber)
+	if (particleId >= d_particlesNumber)
 		return;
 	curandState prngLocalState = d_prngStates[particleId];
 	
@@ -39,14 +39,15 @@ __global__ void _PsoParticles_updateLBest(float* d_positions, float* d_costs, fl
 	float* d_lBestCosts)
 {
 	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
-	if (particleId > d_particlesNumber)
+	if (particleId >= d_particlesNumber)
 		return;
 
 	if (d_costs[particleId] < d_lBestCosts[particleId])
 	{
+		d_lBestCosts[particleId] = d_costs[particleId];
 		for (int coordIdx = particleId; coordIdx < d_particlesNumber * d_dimensions;
 			coordIdx += d_particlesNumber)
-			d_lBestCosts[coordIdx] += d_costs[coordIdx];
+			d_lBestPositions[coordIdx] = d_positions[coordIdx];
 	}
 }
 
@@ -54,7 +55,7 @@ __global__ void _PsoParticles_updatePositions(float* d_positions, float* d_veloc
 	float* d_lBestPositions, curandState* d_prngStates)
 {
 	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
-	if (particleId > d_particlesNumber)
+	if (particleId >= d_particlesNumber)
 		return;
 	curandState prngLocalState = d_prngStates[particleId];
 
@@ -76,7 +77,7 @@ __global__ void _PsoParticles_updatePositions(float* d_positions, float* d_veloc
 		newVelocity[i] = d_psoConstants.w * d_velocities[coordIdx] +
 			d_psoConstants.speedLocal * randLocal * (d_lBestPositions[coordIdx] - d_positions[coordIdx]) +
 			d_psoConstants.speedGlobal * randGlobal * (gBestPosition[i] - d_positions[coordIdx]);
-		newPosition[i] = newVelocity[i];
+		newPosition[i] = d_positions[coordIdx] + newVelocity[i];
 
 		float k_temp = 1;
 		if (newPosition[i] > d_solutionBoxConstraints.max)
@@ -84,7 +85,7 @@ __global__ void _PsoParticles_updatePositions(float* d_positions, float* d_veloc
 		else if (newPosition[i] < d_solutionBoxConstraints.min)
 			k_temp = (-newPosition[i] + d_solutionBoxConstraints.min) / newVelocity[i];
 
-		if (k_temp < k)
+		if (k_temp < k && k_temp > 0)
 			k = k_temp;
 	}
 
@@ -94,6 +95,8 @@ __global__ void _PsoParticles_updatePositions(float* d_positions, float* d_veloc
 		d_positions[coordIdx] += k * newVelocity[i];
 		d_velocities[coordIdx] = k * newVelocity[i];
 	}
+
+	delete newVelocity, newPosition;
 }
 
 PsoParticles::PsoParticles(Options* options)
@@ -102,6 +105,8 @@ PsoParticles::PsoParticles(Options* options)
 	cudaMalloc(&d_velocities, options->particlesNumber * options->dimensions * sizeof(float));
 	cudaMalloc(&d_gBestPosition, options->dimensions * sizeof(float));
 	cudaMalloc(&d_gBestCost, sizeof(float));
+	cudaMalloc(&d_lBestPositions, options->particlesNumber * options->dimensions * sizeof(float));
+	cudaMalloc(&d_lBestCosts, options->particlesNumber * sizeof(float));
 
 	cudaMallocHost(&gBestPosition, options->dimensions * sizeof(float));
 	cudaMallocHost(&gBestCost, sizeof(float));

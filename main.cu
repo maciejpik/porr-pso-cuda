@@ -1,5 +1,6 @@
 ﻿#include "include/Options.cuh"
 #include "include/PsoParticles.cuh"
+#include "include/Pso.cuh"
 
 #include <cuda_runtime.h>
 
@@ -16,7 +17,8 @@ int main(int argc, char* argv[])
 	options->verbose = true;
 
 	PsoParticles* particles = new PsoParticles(options);
-	particles->print();
+	Pso* pso = new Pso(options, particles);
+	pso->solve();
 
-	delete particles, options;
+	delete pso, particles, options;
 }
