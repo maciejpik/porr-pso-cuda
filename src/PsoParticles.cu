@@ -38,6 +38,7 @@ PsoParticles::PsoParticles(Options* options)
 
 	_PsoParticles_PsoParticles_initialize << <options->gridSize, options->blockSize >> > (d_positions,
 		d_velocities, d_prngStates);
+	computeCosts();
 }
 
 PsoParticles::~PsoParticles()

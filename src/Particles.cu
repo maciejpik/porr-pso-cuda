@@ -1,5 +1,7 @@
 ﻿#include "../include/Particles.cuh"
+#include "../include/Options.cuh"
 
+#include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include <time.h>
 #include <stdio.h>
@@ -15,6 +17,45 @@ __global__ void _Particles_Particles_initPrng(int seed, curandState* d_prngState
 	if (particleId >= d_particlesNumber)
 		return;
 	curand_init(seed, particleId, 0, &d_prngStates[particleId]);
+}
+
+__global__ void _PsoParticles_computeCosts_Task1(float* d_positions, float* d_costs)
+{
+	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
+	if (particleId >= d_particlesNumber)
+		return;
+
+	float subSum = 0, subProduct = 1;
+	for (int coordIdx = particleId, i = 1; coordIdx < d_particlesNumber * d_dimensions;
+		coordIdx += d_particlesNumber, i++)
+	{
+		float x_i = d_positions[coordIdx];
+		subSum += x_i * x_i;
+		subProduct *= cosf(x_i / i);
+	}
+
+	d_costs[particleId] = subSum / 40.0 + 1 - subProduct;
+}
+
+__global__ void _PsoParticles_computeCosts_Task2(float* d_positions, float* d_costs)
+{
+	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
+	if (particleId >= d_particlesNumber)
+		return;
+
+	float subSum = 0;
+	int coordIdx = particleId;
+	float x_i = 0, x_i_1 = d_positions[coordIdx];
+	for (coordIdx += d_particlesNumber; coordIdx < d_particlesNumber * d_dimensions;
+		coordIdx += d_particlesNumber)
+	{
+		x_i = x_i_1;
+		x_i_1 = d_positions[coordIdx];
+		subSum += 100 * (x_i_1 - x_i * x_i) * (x_i_1 - x_i * x_i) +
+			(1 - x_i) * (1 - x_i);
+	}
+
+	d_costs[particleId] = subSum;
 }
 
 Particles::Particles(Options* options)
@@ -57,4 +98,12 @@ void Particles::print()
 	}
 
 	delete positions, costs;
+}
+
+void Particles::computeCosts()
+{
+	if (options->task == options->taskType::TASK_1)
+		_PsoParticles_computeCosts_Task1 << <options->gridSize, options->blockSize >> > (d_positions, d_costs);
+	else if (options->task == options->taskType::TASK_2)
+		_PsoParticles_computeCosts_Task2 << <options->gridSize, options->blockSize >> > (d_positions, d_costs);
 }
