@@ -61,7 +61,7 @@ __global__ void _McParticles_McParticles_initialize(float* d_positions, float* d
 
 	for (int coordIdx = particleId, i = 0; coordIdx < d_particlesNumber * d_dimensions;
 		coordIdx += d_particlesNumber, i++)
-		newPosition[i] += d_positions[coordIdx] + k * deltaPosition[i];
+		newPosition[i] = d_positions[coordIdx] + k * deltaPosition[i];
 
 	float newCost;
 	if(taskId == 1)
@@ -166,7 +166,7 @@ float* McParticles::getBestCost()
 	return gBestCost;
 }
 
-void McParticles::updatePosition()
+void McParticles::updatePositions()
 {
 	if (options->dimensions < 16)
 	{

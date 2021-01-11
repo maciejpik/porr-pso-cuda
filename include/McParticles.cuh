@@ -15,7 +15,7 @@ public:
 	McParticles(Options* options);
 	~McParticles();
 
-	void updatePosition();
+	void updatePositions();
 
 	float* getBestPosition();
 	float* getBestCost();

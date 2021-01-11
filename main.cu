@@ -1,6 +1,8 @@
 ﻿#include "include/Options.cuh"
 #include "include/PsoParticles.cuh"
 #include "include/Pso.cuh"
+#include "include/McParticles.cuh"
+#include "include/Mc.cuh"
 
 #include <cuda_runtime.h>
 #include <chrono>
@@ -19,16 +21,21 @@ int main(int argc, char* argv[])
 
 	auto tStart = std::chrono::high_resolution_clock::now();
 
-	PsoParticles* particles = new PsoParticles(options);
+	//PsoParticles* particles = new PsoParticles(options);
+	McParticles* particles = new McParticles(options);
 
 	auto tEnd = std::chrono::high_resolution_clock::now();
 	long long int duration = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
 	printf("Initialization took %lf s\n",duration / 1000000.0);
 
-	Pso* pso = new Pso(options, particles);
-	pso->solve();
+	//Pso* pso = new Pso(options, particles);
+	//pso->solve();
+	//delete pso;
 
-	delete pso;
+	Mc* mc = new Mc(options, particles);
+	mc->solve();
+	delete mc;
+
 	delete particles;
 	delete options;
 }

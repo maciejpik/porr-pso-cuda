@@ -44,7 +44,7 @@ __device__ float _PsoParticles_computeCosts_Task1(float* position)
 	{
 		float x_i = position[i];
 		subSum += x_i * x_i;
-		subProduct *= cosf(x_i / i);
+		subProduct *= cosf(x_i / (i + 1));
 	}
 
 	return subSum / 40.0 + 1 - subProduct;
