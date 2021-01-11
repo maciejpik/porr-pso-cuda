@@ -15,7 +15,7 @@ public:
 	virtual ~Particles();
 
 	void print();
-	void computeCosts();
+	void updateCosts();
 
 protected:
 	Options* options;

@@ -100,7 +100,7 @@ void Particles::print()
 	delete positions, costs;
 }
 
-void Particles::computeCosts()
+void Particles::updateCosts()
 {
 	if (options->task == options->taskType::TASK_1)
 		_PsoParticles_computeCosts_Task1 << <options->gridSize, options->blockSize >> > (d_positions, d_costs);

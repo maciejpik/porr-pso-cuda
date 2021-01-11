@@ -12,6 +12,13 @@ public:
 	PsoParticles(Options* options);
 	~PsoParticles();
 
+	void updateGBest();
+
 private:
 	float* d_velocities;
+	float* d_gBestPosition;
+	float* d_gBestCost;
+
+	float* gBestPosition;
+	float* gBestCost;
 };

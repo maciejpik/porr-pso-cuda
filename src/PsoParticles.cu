@@ -3,6 +3,8 @@
 
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
+#include <thrust/device_vector.h>
+#include <thrust/extrema.h>
 
 extern __constant__ int d_particlesNumber;
 extern __constant__ int d_dimensions;
@@ -35,13 +37,55 @@ PsoParticles::PsoParticles(Options* options)
 	: Particles(options)
 {
 	cudaMalloc(&d_velocities, options->particlesNumber * options->dimensions * sizeof(float));
+	cudaMalloc(&d_gBestPosition, options->dimensions * sizeof(float));
+	cudaMalloc(&d_gBestCost, sizeof(float));
+
+	cudaMallocHost(&gBestPosition, options->dimensions * sizeof(float));
+	cudaMallocHost(&gBestCost, sizeof(float));
 
 	_PsoParticles_PsoParticles_initialize << <options->gridSize, options->blockSize >> > (d_positions,
 		d_velocities, d_prngStates);
-	computeCosts();
+	updateCosts();
+
+	cudaMemcpy2D(d_gBestPosition, sizeof(float), d_positions, options->particlesNumber * sizeof(float),
+		sizeof(float), options->dimensions, cudaMemcpyDeviceToDevice);
+	cudaMemcpy(d_gBestCost, d_costs, sizeof(float), cudaMemcpyDeviceToDevice);
+
+	cudaMemcpy2D(gBestPosition, sizeof(float), d_positions, options->particlesNumber * sizeof(float),
+		sizeof(float), options->dimensions, cudaMemcpyDeviceToHost);
+	cudaMemcpy(gBestCost, d_costs, sizeof(float), cudaMemcpyDeviceToHost);
+
+	updateGBest();
 }
 
 PsoParticles::~PsoParticles()
 {
 	cudaFree(d_velocities);
+	cudaFree(d_gBestPosition);
+	cudaFree(d_gBestCost);
+
+	cudaFreeHost(gBestPosition);
+	cudaFreeHost(gBestCost);
+}
+
+void PsoParticles::updateGBest()
+{
+	thrust::device_ptr<float> temp_d_costs(d_costs);
+	thrust::device_ptr<float> temp_gBestCost = thrust::min_element(temp_d_costs,
+		temp_d_costs + options->particlesNumber);
+
+	if (temp_gBestCost[0] < *gBestCost)
+	{
+		int bestParticleId = &temp_gBestCost[0] - &temp_d_costs[0];
+		
+		cudaMemcpy2D(d_gBestPosition, sizeof(float), d_positions + bestParticleId,
+			options->particlesNumber * sizeof(float),
+			sizeof(float), options->dimensions, cudaMemcpyDeviceToDevice);
+		cudaMemcpy(d_gBestCost, d_costs + bestParticleId, sizeof(float), cudaMemcpyDeviceToDevice);
+
+		cudaMemcpy2D(gBestPosition, sizeof(float), d_positions + bestParticleId,
+			options->particlesNumber * sizeof(float),
+			sizeof(float), options->dimensions, cudaMemcpyDeviceToHost);
+		*gBestCost = temp_gBestCost[0];
+	}
 }
