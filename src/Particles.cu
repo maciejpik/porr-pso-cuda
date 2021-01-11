@@ -37,6 +37,19 @@ __global__ void _PsoParticles_computeCosts_Task1(float* d_positions, float* d_co
 	d_costs[particleId] = subSum / 40.0 + 1 - subProduct;
 }
 
+__device__ float _PsoParticles_computeCosts_Task1(float* position)
+{
+	float subSum = 0, subProduct = 1;
+	for (int i = 0; i < d_dimensions; i++)
+	{
+		float x_i = position[i];
+		subSum += x_i * x_i;
+		subProduct *= cosf(x_i / i);
+	}
+
+	return subSum / 40.0 + 1 - subProduct;
+}
+
 __global__ void _PsoParticles_computeCosts_Task2(float* d_positions, float* d_costs)
 {
 	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
@@ -56,6 +69,21 @@ __global__ void _PsoParticles_computeCosts_Task2(float* d_positions, float* d_co
 	}
 
 	d_costs[particleId] = subSum;
+}
+
+__device__ float _PsoParticles_computeCosts_Task2(float* position)
+{
+	float subSum = 0;
+	float x_i = 0, x_i_1 = position[0];
+	for (int i = 1; i < d_dimensions; i++)
+	{
+		x_i = x_i_1;
+		x_i_1 = position[i];
+		subSum += 100 * (x_i_1 - x_i * x_i) * (x_i_1 - x_i * x_i) +
+			(1 - x_i) * (1 - x_i);
+	}
+
+	return subSum;
 }
 
 Particles::Particles(Options* options)
