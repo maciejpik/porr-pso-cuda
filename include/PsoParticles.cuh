@@ -22,6 +22,9 @@ public:
 	void updateLBest();
 	void updatePositions();
 
+	float* getBestPosition() { return gBestPosition; }
+	float* getBestCost() { return gBestCost; }
+
 private:
 	float* d_velocities;
 	float* d_gBestPosition;
