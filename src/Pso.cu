@@ -17,7 +17,7 @@ void Pso::solve()
 
 	if (options->verbose)
 		printf("Iteration %4d: cost = %.4f\n", iteration, cost);
-	while (!stop)
+	while (!stop )
 	{
 		iteration++;
 

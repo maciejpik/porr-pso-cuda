@@ -20,5 +20,7 @@ int main(int argc, char* argv[])
 	Pso* pso = new Pso(options, particles);
 	pso->solve();
 
-	delete pso, particles, options;
+	delete pso;
+	delete particles;
+	delete options;
 }

@@ -70,6 +70,7 @@ __global__ void _PsoParticles_updatePositions(float* d_positions, float* d_veloc
 
 	float* newVelocity = new float[d_dimensions];
 	float* newPosition = new float[d_dimensions];
+
 	float k = 1;
 	for (int coordIdx = particleId, i = 0; coordIdx < d_particlesNumber * d_dimensions;
 		coordIdx += d_particlesNumber, i++)
@@ -96,7 +97,7 @@ __global__ void _PsoParticles_updatePositions(float* d_positions, float* d_veloc
 		d_velocities[coordIdx] = k * newVelocity[i];
 	}
 
-	delete newVelocity, newPosition;
+	delete newVelocity; delete newPosition;
 }
 
 PsoParticles::PsoParticles(Options* options)
