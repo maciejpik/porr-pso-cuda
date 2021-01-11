@@ -5,12 +5,14 @@
     <CudaCompile Include="src\Particles.cu" />
     <CudaCompile Include="src\PsoParticles.cu" />
     <CudaCompile Include="src\Pso.cu" />
+    <CudaCompile Include="src\McParticles.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Options.cuh" />
     <ClInclude Include="include\Particles.cuh" />
     <ClInclude Include="include\PsoParticles.cuh" />
     <ClInclude Include="include\Pso.cuh" />
+    <ClInclude Include="include\McParticles.cuh" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Options.cu" />
