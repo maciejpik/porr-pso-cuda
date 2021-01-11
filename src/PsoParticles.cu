@@ -6,8 +6,6 @@
 #include <thrust/device_vector.h>
 #include <thrust/extrema.h>
 
-const int maxDimension = 128;
-
 extern __constant__ int d_particlesNumber;
 extern __constant__ int d_dimensions;
 extern __constant__ boxConstraints d_initializationBoxConstraints;
@@ -51,6 +49,7 @@ __global__ void _PsoParticles_updateLBest(float* d_positions, float* d_costs, fl
 	}
 }
 
+template<int maxDimension>
 __global__ void _PsoParticles_updatePositions(float* d_positions, float* d_velocities, float* d_gBestPosition,
 	float* d_lBestPositions, curandState* d_prngStates)
 {
@@ -99,6 +98,19 @@ __global__ void _PsoParticles_updatePositions(float* d_positions, float* d_veloc
 
 	delete newVelocity; delete newPosition;
 }
+
+template __global__ void _PsoParticles_updatePositions<16>(float* d_positions, float* d_velocities, float* d_gBestPosition,
+	float* d_lBestPositions, curandState* d_prngStates);
+template __global__ void _PsoParticles_updatePositions<32>(float* d_positions, float* d_velocities, float* d_gBestPosition,
+	float* d_lBestPositions, curandState* d_prngStates);
+template __global__ void _PsoParticles_updatePositions<64>(float* d_positions, float* d_velocities, float* d_gBestPosition,
+	float* d_lBestPositions, curandState* d_prngStates);
+template __global__ void _PsoParticles_updatePositions<128>(float* d_positions, float* d_velocities, float* d_gBestPosition,
+	float* d_lBestPositions, curandState* d_prngStates);
+template __global__ void _PsoParticles_updatePositions<256>(float* d_positions, float* d_velocities, float* d_gBestPosition,
+	float* d_lBestPositions, curandState* d_prngStates);
+template __global__ void _PsoParticles_updatePositions<512>(float* d_positions, float* d_velocities, float* d_gBestPosition,
+	float* d_lBestPositions, curandState* d_prngStates);
 
 PsoParticles::PsoParticles(Options* options)
 	: Particles(options)
@@ -174,6 +186,23 @@ void PsoParticles::updateLBest()
 
 void PsoParticles::updatePositions()
 {
-	_PsoParticles_updatePositions << <options->gridSize, options->blockSize >> >
-		(d_positions, d_velocities, d_gBestPosition, d_lBestPositions, d_prngStates);
+	int dimensions = options->dimensions;
+	if(dimensions < 16)
+		_PsoParticles_updatePositions <16> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_velocities, d_gBestPosition, d_lBestPositions, d_prngStates);
+	else if(dimensions < 32)
+		_PsoParticles_updatePositions <32> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_velocities, d_gBestPosition, d_lBestPositions, d_prngStates);
+	else if(dimensions < 64)
+		_PsoParticles_updatePositions <64> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_velocities, d_gBestPosition, d_lBestPositions, d_prngStates);
+	else if(dimensions < 128)
+		_PsoParticles_updatePositions <128> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_velocities, d_gBestPosition, d_lBestPositions, d_prngStates);
+	else if(dimensions < 256)
+		_PsoParticles_updatePositions <256> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_velocities, d_gBestPosition, d_lBestPositions, d_prngStates);
+	else
+		_PsoParticles_updatePositions <512> << <options->gridSize, options->blockSize >> >
+			(d_positions, d_velocities, d_gBestPosition, d_lBestPositions, d_prngStates);
 }
