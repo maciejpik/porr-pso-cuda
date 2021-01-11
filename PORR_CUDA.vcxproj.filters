@@ -2,9 +2,13 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <CudaCompile Include="main.cu" />
+    <CudaCompile Include="src\Particles.cu" />
+    <CudaCompile Include="src\PsoParticles.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Options.cuh" />
+    <ClInclude Include="include\Particles.cuh" />
+    <ClInclude Include="include\PsoParticles.cuh" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Options.cu" />

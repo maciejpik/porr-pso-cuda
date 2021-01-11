@@ -26,9 +26,9 @@ public:
 	virtual ~Options() = default;
 
 	int particlesNumber;
-	int dimesions;
+	int dimensions;
 	boxConstraints initializationBoxConstraints;
-	boxConstraints boxConstraints;
+	boxConstraints solutionBoxConstraints;
 	psoConstants psoConstants;
 	mcConstants mcConstants;
 	enum taskType {
@@ -38,4 +38,6 @@ public:
 	taskType task;
 	float stopCriterion;
 	bool verbose;
+	int blockSize;
+	int gridSize;
 };
