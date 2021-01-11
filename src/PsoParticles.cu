@@ -33,6 +33,21 @@ __global__ void _PsoParticles_PsoParticles_initialize(float* d_positions, float*
 	d_prngStates[particleId] = prngLocalState;
 }
 
+__global__ void _PsoParticles_updateLBest(float* d_positions, float* d_costs, float* d_lBestPositions,
+	float* d_lBestCosts)
+{
+	int particleId = threadIdx.x + blockIdx.x * blockDim.x;
+	if (particleId > d_particlesNumber)
+		return;
+
+	if (d_costs[particleId] < d_lBestCosts[particleId])
+	{
+		for (int coordIdx = particleId; coordIdx < d_particlesNumber * d_dimensions;
+			coordIdx += d_particlesNumber)
+			d_lBestCosts[coordIdx] += d_costs[coordIdx];
+	}
+}
+
 PsoParticles::PsoParticles(Options* options)
 	: Particles(options)
 {
@@ -56,6 +71,11 @@ PsoParticles::PsoParticles(Options* options)
 	cudaMemcpy(gBestCost, d_costs, sizeof(float), cudaMemcpyDeviceToHost);
 
 	updateGBest();
+
+	cudaMemcpy(d_lBestPositions, d_positions, options->particlesNumber * options->dimensions * sizeof(float),
+		cudaMemcpyDeviceToDevice);
+	cudaMemcpy(d_lBestCosts, d_costs, options->particlesNumber * sizeof(float),
+		cudaMemcpyDeviceToDevice);
 }
 
 PsoParticles::~PsoParticles()
@@ -88,4 +108,9 @@ void PsoParticles::updateGBest()
 			sizeof(float), options->dimensions, cudaMemcpyDeviceToHost);
 		*gBestCost = temp_gBestCost[0];
 	}
+}
+
+void PsoParticles::updateLBest()
+{
+	_PsoParticles_updateLBest << <options->gridSize, options->blockSize >> > (d_positions, d_costs, d_lBestPositions, d_lBestCosts);
 }
