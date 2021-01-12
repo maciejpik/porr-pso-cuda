@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 {
 	Options* options = new Options(argc, argv);
 	options->verbose = true;
-	options->logger = true;
+	options->logger = false;
 
 	auto tStart = std::chrono::high_resolution_clock::now();
 
@@ -27,7 +27,8 @@ int main(int argc, char* argv[])
 
 	auto tEnd = std::chrono::high_resolution_clock::now();
 	long long int duration = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
-	printf("Initialization took %lf s\n",duration / 1000000.0);
+	if(options->verbose)
+		printf("Initialization took %lf s\n",duration / 1000000.0);
 
 	Pso* pso = new Pso(options, particles);
 	pso->solve();

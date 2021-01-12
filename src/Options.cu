@@ -29,7 +29,7 @@ Options::Options(int argc, char* argv[])
 	else
 		blockSize = 512;
 
-	initializationBoxConstraints = { -40, 40 };
+	initializationBoxConstraints = { -40, -30 };
 	solutionBoxConstraints = { -40, 40 };
 	float chi = 0.72984f, c1 = 2.05f, c2 = 2.05f;
 	psoConstants = { chi, chi * c1, chi * c2 };
