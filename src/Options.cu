@@ -24,6 +24,11 @@ Options::Options(int argc, char* argv[])
 		dimensions = 3;
 	}
 
+	if (argc == 4)
+		sscanf(argv[3], "%d", &blockSize);
+	else
+		blockSize = 512;
+
 	initializationBoxConstraints = { -40, 40 };
 	solutionBoxConstraints = { -40, 40 };
 	float chi = 0.72984f, c1 = 2.05f, c2 = 2.05f;
@@ -32,8 +37,8 @@ Options::Options(int argc, char* argv[])
 	task = taskType::TASK_1;
 	stopCriterion = 0.01f;
 	verbose = true;
-	blockSize = 512;
 	gridSize = (particlesNumber + blockSize - 1) / blockSize;
+	logger = false;
 
 	cudaMemcpyToSymbol(&d_particlesNumber, &particlesNumber, sizeof(int));
 	cudaMemcpyToSymbol(&d_dimensions, &dimensions, sizeof(int));
