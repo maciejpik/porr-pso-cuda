@@ -40,4 +40,5 @@ public:
 	bool verbose;
 	int blockSize;
 	int gridSize;
+	bool logger;
 };
