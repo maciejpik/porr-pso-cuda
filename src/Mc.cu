@@ -49,10 +49,7 @@ void Mc::solve()
 	auto tEnd = std::chrono::high_resolution_clock::now();
 	long long int duration = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
 
-	if (options->verbose)
-		printf("Solution f(x) = %.8f found after %d iterations (%lf s)\n", cost, iteration, duration / 1000000.0);
-	else
-		printf("%lf\n", duration / 1000000.0);
+	printf("Solution f(x) = %.8f found after %d iterations (%lf s)\n", cost, iteration, duration / 1000000.0);
 
 	if (options->logger)
 		fclose(logFile);

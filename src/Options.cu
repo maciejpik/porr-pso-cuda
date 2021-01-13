@@ -13,15 +13,15 @@ extern __constant__ mcConstants d_mcConstants;
 
 Options::Options(int argc, char* argv[])
 {
-	if (argc == 3)
+	if (argc >= 3)
 	{
 		sscanf(argv[1], "%d", &particlesNumber);
 		sscanf(argv[2], "%d", &dimensions);
 	}
 	else
 	{
-		particlesNumber = 10;
-		dimensions = 3;
+		particlesNumber = 100;
+		dimensions = 2;
 	}
 
 	if (argc == 4)
@@ -29,11 +29,11 @@ Options::Options(int argc, char* argv[])
 	else
 		blockSize = 512;
 
-	initializationBoxConstraints = { -40, -30 };
+	initializationBoxConstraints = { -40, 40 };
 	solutionBoxConstraints = { -40, 40 };
 	float chi = 0.72984f, c1 = 2.05f, c2 = 2.05f;
 	psoConstants = { chi, chi * c1, chi * c2 };
-	mcConstants = { .1f, .01f };
+	mcConstants = { .1f, .001f };
 	task = taskType::TASK_1;
 	stopCriterion = 0.01f;
 	verbose = true;
